@@ -1,53 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>ToDo App</title>
-    <style>
-      #error {
-        display: none;
-      }
-    </style>
+  <meta charset="UTF-8">
+  <title>ToDo App</title>
+  <style>
+    .hidden {
+      display: none;
+    }
+    ul {
+        list-style: none;
+        padding: 0;
+        margin: 1;
+        width: 200px;
+    }
+    li {
+      clear: both;
+    }
+    li button {
+      -webkit-appearance: none;
+      border: none;
+      outline: none;
+      color: red;
+      float: right;
+      cursor: pointer;
+      font-size: 20px;
+    }
+  </style>
 </head>
 <body>
-    <h3>ToDo Lister</h3>
-    <div id="error" class="hidden">OOps Something went wrong!!</div>
-    <form id="form" method="post" action="/todos/create">
-      <input type="text" id="description" name="description" />
-      <input type="submit" value="Create" />
-    </form>
-    <ul id="todos">
-        {% for d in data %}
-        <li> {{d.description}} </li>
-        {% endfor %}
+<!--   <div class="lists-wrapper">
+    <ul id="lists">
+      {% for list in lists %}
+      <li>
+        <a href="/lists/{{ list.id }}">
+          {{ list.name }}
+        </a>
+      </li>
+      {% endfor %}
     </ul>
-    <script>
-        const descInput = document.getElementById('description')
-        document.getElementById('form').onsubmit = function(e) {
-            e.preventDefault();
-            const desc = descInput.value;
-            descInput.value = '';
-            fetch('/todos/create', {
-                method: 'POST',
-                body: JSON.stringify({
-                    'description': desc,
-                }),
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(jsonResponse => {
-                console.log('response', jsonResponse);
-                li = document.createElement('li');
-                li.innerText = desc;
-                document.getElementById('todos').appendChild(li);
-                document.getElementById('error').className = 'hidden';
-            })
-            .catch(() => {
-                document.getElementById('error').className = '';
-            })
+  </div> -->
+  <div id="error" class="hidden">OOps Something went wrong!!</div>
+  <h3>ToDo Lister</h3>
+  <form id="form" method="post" action="/todos/create">
+    <input type="text" id="description" name="description" />
+    <input type="submit" value="Create" />
+  </form>  
+  <ul id="todos">
+    {% for todo in data %}
+    <li>
+      <input class="check-completed" data-id="{{ todo.id }}" type="checkbox" {% if todo.completed %} checked {% endif %} />
+      {{ todo.description }}
+      <button class="delete-completed" data-id="{{ todo.id }}" type="button">&cross;</button>
+    </li>
+    {% endfor %}
+  </ul>
+  <script>
+    const deleteBtns = document.querySelectorAll('.delete-completed');
+    for (let i = 0; i < deleteBtns.length; i++) { 
+      const deleteButton = deleteBtns[i];
+      deleteButton.onclick = function(e) {
+        console.log('Delete Event:', e);
+        const todoId = e.target.dataset['id'];
+        fetch('/todos/delete-completed/' + todoId, {
+        method: 'DELETE'
+        })
+        .then(()=> {
+          document.getElementById('error').className = 'hidden';
+          window.location = "/";
+        })
+        .catch(function() {
+          document.getElementById('error').className = '';
+        });
+      }
+    }
+
+    const checkboxes = document.querySelectorAll('.check-completed');
+    for (let i = 0; i < checkboxes.length; i++) {
+      const checkbox = checkboxes[i];
+      checkbox.onchange = function(e) {
+        console.log('Set Event:', e);
+        const newCompleted = e.target.checked;
+        const todoId = e.target.dataset['id'];
+        fetch('/todos/set-completed/' + todoId, {
+          method: 'POST',
+          body: JSON.stringify({
+            'completed': newCompleted
+          }),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(function() {
+          document.getElementById('error').className = 'hidden';
+          window.location = "/";
+        })
+        .catch(function() {
+          document.getElementById('error').className = '';
+        })
+      }
+    }
+
+    document.getElementById('form').onsubmit = function(e) {
+      e.preventDefault();      
+      fetch('/todos/create', {
+        method: 'POST',
+        body: JSON.stringify({
+            'description': document.getElementById('description').value,
+        }),
+        headers: {
+            'Content-Type': 'application/json',
         }
-    </script>
+      })
+      .then(response => response.json())
+      .then(jsonResponse => {
+        console.log('response', jsonResponse);
+        const liItem = document.createElement('li');
+
+        const checkbox = document.createElement('input');        
+        checkbox.className = 'check-completed';
+        checkbox.type = 'checkbox';
+        checkbox.setAttribute('data-id', jsonResponse.id);
+        liItem.appendChild(checkbox);
+
+        const text = document.createTextNode(' ' + jsonResponse.description);
+        liItem.appendChild(text);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-completed';
+        deleteBtn.setAttribute('data-id', jsonResponse.id);
+        deleteBtn.innerHTML = '&cross;';
+        liItem.appendChild(deleteBtn);
+
+        document.getElementById('todos').appendChild(liItem);
+        document.getElementById('error').className = 'hidden';
+        window.location = "/";
+      })
+      .catch(() => {
+        console.error('Error occurred');
+        document.getElementById('error').className = '';
+      })
+    }
+  </script>
 </body>
 </html>

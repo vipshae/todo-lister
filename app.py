@@ -38,6 +38,7 @@ def create_todo():
     try:
         description = request.get_json()['description']
         todo = ToDo(description=description)
+        print('Creating', description)
         db.session.add(todo)
         db.session.commit()
         body['description'] = todo.description
@@ -54,6 +55,45 @@ def create_todo():
         return jsonify(body)
 
 
+@app.route('/todos/set-completed/<todo_id>', methods=['POST'])
+def set_completed_todo(todo_id):
+    error = False
+    try:
+        completed = request.get_json()['completed']
+        print('Completed', todo_id)
+        todo = ToDo.query.get(todo_id)
+        todo.completed = completed
+        db.session.commit()
+    except:
+        db.session.rollback()
+        error = True
+        print(sys.exc_info())
+    finally:
+        db.session.close()
+    
+    if error:
+        abort(400)
+    return jsonify({ 'success': True })
+
+
+@app.route('/todos/delete-completed/<todo_id>', methods=['DELETE'])
+def delete_completed_todo(todo_id):
+    error = False
+    try:
+        print('Deleting', todo_id)
+        ToDo.query.filter_by(id=todo_id).delete()
+        db.session.commit()
+    except:
+        db.session.rollback()
+        error = True
+        print(sys.exc_info())
+    finally:
+        db.session.close()
+    if error:
+        abort(400)
+    return jsonify({ 'success': True })    
+
+
 @app.route('/')
 def index():
-    return render_template('index.html', data=ToDo.query.all())
+    return render_template('index.html', data=ToDo.query.order_by('id').all())
